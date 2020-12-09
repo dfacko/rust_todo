@@ -7,13 +7,18 @@ use serde_json::*;
 pub async fn additem(conn: web::Data<Pool>, newitem: web::Json<Value>) -> impl Responder {
     let data: String = match json_validation::validate(
         &newitem,
-        vec!["finished|bool", "list_id|int", "task|string"],
+        vec![
+            "finished|bool|string",
+            "list_id|int",
+            "task|string",
+            "object|object",
+        ],
     ) {
         Some(error) => return Ok(HttpResponse::UnprocessableEntity().json(error)),
         None => to_string(&newitem.into_inner()).unwrap(),
     };
     let insertable_item: TodoItemNew = serde_json::from_str(&data).unwrap();
-
+    println!("Created todo item");
     TodoItem::create_item(&conn.get().unwrap(), insertable_item)
         .map(|item| HttpResponse::Ok().json(item))
         .map_err(|_| HttpResponse::InternalServerError().finish())
@@ -43,6 +48,21 @@ pub async fn check_item(conn: web::Data<Pool>, item_id: web::Path<i32>) -> impl 
 
 pub async fn uncheck_item(conn: web::Data<Pool>, item_id: web::Path<i32>) -> impl Responder {
     TodoItem::uncheck(&conn.get().unwrap(), item_id.into_inner())
+        .map(|item| HttpResponse::Ok().json(json!({ "updated item": item })))
+        .map_err(|_| HttpResponse::InternalServerError().finish())
+}
+
+pub async fn return_ok(conn: web::Data<Pool>, newitem: web::Json<Value>) -> impl Responder {
+    let data: String = match json_validation::validate(
+        &newitem,
+        vec!["finished|bool", "list_id|int", "task|string"],
+    ) {
+        Some(error) => return Ok(HttpResponse::UnprocessableEntity().json(error)),
+        None => to_string(&newitem.into_inner()).unwrap(),
+    };
+    let insertable_item: TodoItemNew = serde_json::from_str(&data).unwrap();
+    println!("Created todo item {:?}", insertable_item);
+    TodoItem::return_ok(&conn.get().unwrap())
         .map(|item| HttpResponse::Ok().json(json!({ "updated item": item })))
         .map_err(|_| HttpResponse::InternalServerError().finish())
 }

@@ -52,6 +52,7 @@ async fn main() -> std::io::Result<()> {
                 "/uncheckitem/{item_id}",
                 web::get().to(todoitem_routes::uncheck_item),
             )
+            .route("/test", web::get().to(todoitem_routes::return_ok))
     })
     .bind("127.0.0.1:8080")?
     .run()

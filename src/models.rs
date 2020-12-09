@@ -142,4 +142,8 @@ impl TodoItem {
             .set(finished.eq(false))
             .get_result(conn)
     }
+
+    pub fn return_ok(conn: &PgConnection) -> Result<bool, diesel::result::Error> {
+        Ok(true)
+    }
 }
