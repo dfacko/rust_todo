@@ -126,4 +126,20 @@ impl TodoItem {
             Err(error) => Err(error),
         }
     }
+
+    pub fn check(conn: &PgConnection, item_id: i32) -> Result<TodoItem, diesel::result::Error> {
+        use crate::schema::todo_item::dsl::*;
+
+        diesel::update(todo_item.filter(id.eq(item_id)))
+            .set(finished.eq(true))
+            .get_result(conn)
+    }
+
+    pub fn uncheck(conn: &PgConnection, item_id: i32) -> Result<TodoItem, diesel::result::Error> {
+        use crate::schema::todo_item::dsl::*;
+
+        diesel::update(todo_item.filter(id.eq(item_id)))
+            .set(finished.eq(false))
+            .get_result(conn)
+    }
 }

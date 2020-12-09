@@ -1,19 +1,15 @@
 use super::db::*;
+use super::json_validation;
 use super::models::*;
-use super::validation;
 use actix_web::{web, HttpResponse, Responder};
 use serde_json::*;
 
-#[derive(Debug, serde::Deserialize)]
-pub struct TodoItemJson {
-    pub list_id: i32,
-    pub task: String,
-    pub finished: bool,
-}
-
 pub async fn additem(conn: web::Data<Pool>, newitem: web::Json<Value>) -> impl Responder {
-    let data: String = match validation::validate(&newitem, vec!["finished", "list_id", "task"]) {
-        Some(error) => return Ok(HttpResponse::InternalServerError().json(error)),
+    let data: String = match json_validation::validate(
+        &newitem,
+        vec!["finished|bool", "list_id|int", "task|string"],
+    ) {
+        Some(error) => return Ok(HttpResponse::UnprocessableEntity().json(error)),
         None => to_string(&newitem.into_inner()).unwrap(),
     };
     let insertable_item: TodoItemNew = serde_json::from_str(&data).unwrap();
@@ -37,4 +33,16 @@ pub async fn delete_item(conn: web::Data<Pool>, item_id: web::Path<i32>) -> impl
             }))
         })
         .map_err(|_| HttpResponse::NotFound().finish())
+}
+
+pub async fn check_item(conn: web::Data<Pool>, item_id: web::Path<i32>) -> impl Responder {
+    TodoItem::check(&conn.get().unwrap(), item_id.into_inner())
+        .map(|item| HttpResponse::Ok().json(json!({ "updated item": item })))
+        .map_err(|_| HttpResponse::InternalServerError().finish())
+}
+
+pub async fn uncheck_item(conn: web::Data<Pool>, item_id: web::Path<i32>) -> impl Responder {
+    TodoItem::uncheck(&conn.get().unwrap(), item_id.into_inner())
+        .map(|item| HttpResponse::Ok().json(json!({ "updated item": item })))
+        .map_err(|_| HttpResponse::InternalServerError().finish())
 }

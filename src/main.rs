@@ -3,11 +3,11 @@ extern crate diesel;
 extern crate dotenv;
 
 mod db;
+mod json_validation;
 mod models;
 mod schema;
 mod todoitem_routes;
 mod todolist_routes;
-mod validation;
 use self::diesel::prelude::*;
 
 use actix_web::{web, App, HttpServer};
@@ -43,6 +43,14 @@ async fn main() -> std::io::Result<()> {
             .route(
                 "/deleteitem/{item_id}",
                 web::delete().to(todoitem_routes::delete_item),
+            )
+            .route(
+                "/checkitem/{item_id}",
+                web::get().to(todoitem_routes::check_item),
+            )
+            .route(
+                "/uncheckitem/{item_id}",
+                web::get().to(todoitem_routes::uncheck_item),
             )
     })
     .bind("127.0.0.1:8080")?
