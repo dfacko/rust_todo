@@ -1,8 +1,10 @@
 use crate::diesel::prelude::*;
 use crate::schema::*;
+use serde_json::{json, Value};
 #[derive(Debug, Queryable, Serialize, Clone)]
 pub struct TodoList {
     pub id: i32,
+    pub user_id: i32,
     pub title: String,
 }
 
@@ -10,6 +12,7 @@ pub struct TodoList {
 #[table_name = "todo_list"]
 pub struct TodoListNew<'a> {
     pub title: &'a str,
+    pub user_id: i32,
 }
 
 #[derive(Debug, Queryable, Serialize, Clone)]
@@ -26,6 +29,25 @@ pub struct TodoItemNew<'a> {
     pub list_id: i32,
     pub task: &'a str,
     pub finished: bool,
+}
+
+#[derive(Debug, Queryable, Serialize, Clone)]
+pub struct User {
+    pub id: i32,
+    pub username: String,
+    pub pword: String,
+}
+
+#[derive(Debug, Insertable, Serialize, Deserialize)]
+#[table_name = "user_"]
+pub struct UserNew<'a> {
+    pub username: &'a str,
+    pub pword: &'a str,
+}
+
+pub struct LoginInfo {
+    pub username: String,
+    pub pword: String,
 }
 
 impl TodoList {
@@ -115,7 +137,7 @@ impl TodoItem {
         }
     }
 
-    pub fn get_item_by_id(
+    pub fn _get_item_by_id(
         conn: &PgConnection,
         item_id: i32,
     ) -> Result<Vec<TodoItem>, diesel::result::Error> {
@@ -143,7 +165,43 @@ impl TodoItem {
             .get_result(conn)
     }
 
-    pub fn return_ok(conn: &PgConnection) -> Result<bool, diesel::result::Error> {
+    pub fn return_ok(_conn: &PgConnection) -> Result<bool, diesel::result::Error> {
         Ok(true)
+    }
+}
+
+impl User {
+    pub fn create_user(conn: &PgConnection, user: UserNew) -> Result<User, diesel::result::Error> {
+        use crate::schema::user_::dsl::*;
+        diesel::insert_into(user_).values(user).get_result(conn)
+    }
+
+    pub fn login(
+        conn: &PgConnection,
+        login_username: String,
+        password: String,
+    ) -> Result<Vec<User>, diesel::result::Error> {
+        use crate::schema::user_::dsl::*;
+
+        user_
+            .find(id)
+            .filter(username.eq(login_username))
+            .load::<User>(conn)
+            .map(|user| {
+                if user.len() > 0 && check_pass(&user[0].pword, &password) {
+                    println!("user found, passwords match");
+                    user
+                } else {
+                    vec![]
+                }
+            })
+    }
+}
+
+fn check_pass(user_pass: &str, input_pass: &str) -> bool {
+    if user_pass == input_pass {
+        true
+    } else {
+        false
     }
 }

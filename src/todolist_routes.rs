@@ -17,6 +17,7 @@ pub async fn lists(conn: web::Data<Pool>) -> impl Responder {
 #[derive(Debug, serde::Deserialize)]
 pub struct TodoListJson {
     pub title: Option<String>,
+    pub user_id: Option<i32>,
 }
 
 pub async fn addlist(conn: web::Data<Pool>, newlist: web::Json<TodoListJson>) -> impl Responder {
@@ -24,7 +25,14 @@ pub async fn addlist(conn: web::Data<Pool>, newlist: web::Json<TodoListJson>) ->
         Some(title) => title.to_string(),
         None => return Ok(HttpResponse::BadRequest().finish()),
     };
-    let newlist = TodoListNew { title: &title };
+    let user_id: i32 = match &newlist.user_id {
+        Some(id) => *id,
+        None => return Ok(HttpResponse::BadRequest().finish()),
+    };
+    let newlist = TodoListNew {
+        title: &title,
+        user_id: user_id,
+    };
 
     TodoList::create_list(&conn.get().unwrap(), newlist)
         .map(|item| HttpResponse::Ok().json(item))
