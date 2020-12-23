@@ -7,16 +7,12 @@ use serde_json::*;
 pub async fn additem(conn: web::Data<Pool>, newitem: web::Json<Value>) -> impl Responder {
     let data: String = match json_validation::validate(
         &newitem,
-        vec![
-            "finished|bool|string",
-            "list_id|int",
-            "task|string",
-            "object|object",
-        ],
+        vec!["finished|bool", "list_id|int", "task|string"],
     ) {
         Some(error) => return Ok(HttpResponse::UnprocessableEntity().json(error)),
         None => to_string(&newitem.into_inner()).unwrap(),
     };
+    println!("this is data {:?}", data);
     let insertable_item: TodoItemNew = serde_json::from_str(&data).unwrap();
     println!("Created todo item");
     TodoItem::create_item(&conn.get().unwrap(), insertable_item)

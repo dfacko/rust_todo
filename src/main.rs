@@ -5,16 +5,18 @@ extern crate futures;
 
 mod db;
 mod json_validation;
+mod jwt;
 mod models;
 mod schema;
+mod simplemiddleware;
 mod todoitem_routes;
 mod todolist_routes;
 mod user_routes;
 use self::diesel::prelude::*;
 use actix_service::Service;
 use futures::future::FutureExt;
-
-use actix_web::{web, App, HttpResponse, HttpServer};
+mod authorize;
+use actix_web::{web, App, HttpServer};
 use diesel::r2d2::{self, ConnectionManager};
 
 #[macro_use]
@@ -30,18 +32,15 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .data(pool.clone())
             .wrap_fn(|req, srv| {
-                println!("middleware{:?}", req);
-                let auth_header = req.headers().get("Authorization");
-                match auth_header {
-                    Some(header) => {
-                        println!("gut {:?}", header);
-                    }
-                    None => {
-                        println!("no auth header");
-                    }
-                }
+                println!("prvi");
                 srv.call(req).map(|res| res)
             })
+            .wrap_fn(|req, srv| {
+                println!("drugi");
+                srv.call(req).map(|res| res)
+            })
+            //.wrap(simplemiddleware::SayHi)
+            .wrap(authorize::CheckLogin)
             .route("/lists", web::get().to(todolist_routes::lists))
             .route("/addlist", web::post().to(todolist_routes::addlist))
             .route(
@@ -71,6 +70,7 @@ async fn main() -> std::io::Result<()> {
             )
             .route("/register", web::post().to(user_routes::create_user))
             .route("/login", web::post().to(user_routes::login))
+            .route("/myLists", web::get().to(user_routes::my_lists))
             .route("/test", web::get().to(todoitem_routes::return_ok))
     })
     .bind("127.0.0.1:8080")?

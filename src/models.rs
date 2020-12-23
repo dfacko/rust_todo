@@ -196,6 +196,14 @@ impl User {
                 }
             })
     }
+
+    pub fn user_lists(
+        conn: &PgConnection,
+        user: User,
+    ) -> Result<Vec<TodoList>, diesel::result::Error> {
+        use crate::schema::todo_list::dsl::*;
+        todo_list.filter(user_id.eq(user.id)).get_results(conn)
+    }
 }
 
 fn check_pass(user_pass: &str, input_pass: &str) -> bool {

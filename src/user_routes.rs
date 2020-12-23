@@ -1,7 +1,8 @@
 use super::db::*;
 use super::json_validation;
+use super::jwt::*;
 use super::models::*;
-use actix_web::{web, Error, FromRequest, HttpRequest, HttpResponse, Responder};
+use actix_web::{web, HttpResponse, Responder};
 use serde_json::{json, to_string, Value};
 
 pub async fn create_user(conn: web::Data<Pool>, newuser: web::Json<Value>) -> impl Responder {
@@ -31,9 +32,11 @@ pub async fn login(conn: web::Data<Pool>, newuser: web::Json<Value>) -> impl Res
     )
     .map(|user| {
         if user.len() > 0 {
+            let jwt = generate(user[0].clone());
             HttpResponse::Ok().json(json!({
                 "message":"sucessful log in",
-                "user":user[0]
+                "user":user[0],
+                "jwt":jwt
             }))
         } else {
             HttpResponse::Ok().json(json!({
@@ -42,4 +45,22 @@ pub async fn login(conn: web::Data<Pool>, newuser: web::Json<Value>) -> impl Res
         }
     })
     .map_err(|_| HttpResponse::InternalServerError().finish())
+}
+
+pub async fn my_lists(conn: web::Data<Pool>, req: web::HttpRequest) -> impl Responder {
+    let user = req.extensions_mut().remove::<User>().unwrap();
+    User::user_lists(&conn.get().unwrap(), user)
+        .map(|user_list| {
+            if user_list.len() > 0 {
+                HttpResponse::Ok().json(json!({
+                    "message":"your lists",
+                    "lists":user_list
+                }))
+            } else {
+                HttpResponse::Ok().json(json!({
+                    "message":"you have no lists"
+                }))
+            }
+        })
+        .map_err(|_| HttpResponse::InternalServerError().finish())
 }

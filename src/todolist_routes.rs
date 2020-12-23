@@ -3,8 +3,10 @@ use super::models::*;
 use actix_web::http::StatusCode;
 use actix_web::{web, HttpResponse, Responder};
 
-pub async fn lists(conn: web::Data<Pool>) -> impl Responder {
+pub async fn lists(conn: web::Data<Pool> /*req: web::HttpRequest*/) -> impl Responder {
     let lists = TodoList::get_all_lists(&conn.get().unwrap()).await;
+    /*let user = req.extensions_mut().remove::<User>().unwrap();
+    println!("ovo je user iz req: {:?}", user);*/
     match lists {
         Ok(lists) => HttpResponse::build(StatusCode::OK).json(lists),
         Err(error) => {
