@@ -1,9 +1,9 @@
 use std::task::{Context, Poll};
 
-use super::jwt::*;
+use crate::jwt::*;
 use actix_service::{Service, Transform};
 use actix_web::dev::{ServiceRequest, ServiceResponse};
-use actix_web::{http, Error, HttpMessage, HttpResponse};
+use actix_web::{Error, HttpMessage, HttpResponse};
 use futures::future::{ok, Either, Ready};
 use serde_json::json;
 

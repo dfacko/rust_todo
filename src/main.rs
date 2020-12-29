@@ -3,21 +3,23 @@ extern crate diesel;
 extern crate dotenv;
 extern crate futures;
 
-mod db;
-mod json_validation;
-mod jwt;
+mod databases;
+mod error;
+mod middleware;
 mod models;
+mod routes;
 mod schema;
-mod simplemiddleware;
-mod todoitem_routes;
-mod todolist_routes;
-mod user_routes;
+mod validation;
+extern crate bcrypt;
 use self::diesel::prelude::*;
 use actix_service::Service;
-use futures::future::FutureExt;
-mod authorize;
 use actix_web::{web, App, HttpServer};
+use databases::*;
 use diesel::r2d2::{self, ConnectionManager};
+use futures::future::FutureExt;
+use middleware::*;
+use routes::{todolist_routes, user_routes};
+use validation::*;
 
 #[macro_use]
 extern crate serde_derive;
@@ -51,27 +53,27 @@ async fn main() -> std::io::Result<()> {
                 "/listbyid/{list_id}",
                 web::get().to(todolist_routes::list_by_id),
             )
-            .route("/additem", web::post().to(todoitem_routes::additem))
+            .route("/additem", web::post().to(routes::todoitem_routes::additem))
             .route(
                 "/listitems/{list_id}",
-                web::get().to(todoitem_routes::items_from_list),
+                web::get().to(routes::todoitem_routes::items_from_list),
             )
             .route(
                 "/deleteitem/{item_id}",
-                web::delete().to(todoitem_routes::delete_item),
+                web::delete().to(routes::todoitem_routes::delete_item),
             )
             .route(
                 "/checkitem/{item_id}",
-                web::get().to(todoitem_routes::check_item),
+                web::get().to(routes::todoitem_routes::check_item),
             )
             .route(
                 "/uncheckitem/{item_id}",
-                web::get().to(todoitem_routes::uncheck_item),
+                web::get().to(routes::todoitem_routes::uncheck_item),
             )
             .route("/register", web::post().to(user_routes::create_user))
             .route("/login", web::post().to(user_routes::login))
             .route("/myLists", web::get().to(user_routes::my_lists))
-            .route("/test", web::get().to(todoitem_routes::return_ok))
+            .route("/test", web::get().to(routes::todoitem_routes::return_ok))
     })
     .bind("127.0.0.1:8080")?
     .run()

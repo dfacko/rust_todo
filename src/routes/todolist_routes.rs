@@ -1,5 +1,5 @@
-use super::db::*;
-use super::models::*;
+use crate::db::*;
+use crate::models::models::*;
 use actix_web::http::StatusCode;
 use actix_web::{web, HttpResponse, Responder};
 use serde_json::json;
