@@ -1,7 +1,8 @@
+use crate::error::*;
 use actix_web::web;
-use serde_json::*;
+use serde_json::{json, Value};
 use std::result::Result;
-pub fn validate(item: &web::Json<Value>, keys: Vec<&str>) -> Option<Value> {
+pub fn validate(item: &web::Json<Value>, keys: Vec<&str>) -> Result<(), Error> {
     let mut messages: Vec<Value> = vec![];
     for key in keys {
         let rule = String::from(key);
@@ -25,9 +26,9 @@ pub fn validate(item: &web::Json<Value>, keys: Vec<&str>) -> Option<Value> {
         }
     }
     if messages.len() == 0 {
-        return None;
+        return Ok(());
     } else {
-        return Some(json!({ "errors:": messages }));
+        return Err(Error::from(json!({ "messages": messages })));
     }
 }
 

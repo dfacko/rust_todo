@@ -1,5 +1,6 @@
 use crate::bcrypt::*;
 use crate::db::*;
+use crate::error::*;
 use crate::json_validation;
 use crate::jwt::*;
 use crate::models::models::*;
@@ -7,24 +8,24 @@ use actix_web::{web, HttpResponse, Responder};
 use serde_json::{json, to_string, Value};
 
 pub async fn create_user(conn: web::Data<Pool>, newuser: web::Json<Value>) -> impl Responder {
-    let data: String =
-        match json_validation::validate(&newuser, vec!["username|string", "pword|string"]) {
-            Some(error) => return Ok(HttpResponse::UnprocessableEntity().json(error)),
-            None => to_string(&newuser.clone()).unwrap(),
-        };
-    let insertable_user: UserNew = serde_json::from_str(&data).unwrap();
+    let data: String = match json_validation::validate(&newuser, vec![]) {
+        Err(err) => return Err(err.to_response()),
+        Ok(_) => to_string(&newuser.into_inner()).map_err(|e| Error::from(e).to_response())?,
+    };
+    let insertable_user: UserNew =
+        serde_json::from_str(&data).map_err(|e| Error::from(e).to_response())?;
     User::create_user(&conn.get().unwrap(), insertable_user)
         .map(|user| HttpResponse::Ok().json(user))
-        .map_err(|_| HttpResponse::InternalServerError().finish())
+        .map_err(|err| err.to_response())
 }
 
 pub async fn login(conn: web::Data<Pool>, newuser: web::Json<Value>) -> impl Responder {
-    let data: String =
-        match json_validation::validate(&newuser, vec!["username|string", "pword|string"]) {
-            Some(error) => return Ok(HttpResponse::UnprocessableEntity().json(error)),
-            None => to_string(&newuser.into_inner()).unwrap(),
-        };
-    let insertable_user: UserNew = serde_json::from_str(&data).unwrap();
+    let data: String = match json_validation::validate(&newuser, vec![]) {
+        Err(err) => return Err(err.to_response()),
+        Ok(_) => to_string(&newuser.into_inner()).map_err(|e| Error::from(e).to_response())?,
+    };
+    let insertable_user: UserNew =
+        serde_json::from_str(&data).map_err(|err| Error::from(err).to_response())?;
     User::login(
         &conn.get().unwrap(),
         insertable_user.username.to_string(),
@@ -44,11 +45,18 @@ pub async fn login(conn: web::Data<Pool>, newuser: web::Json<Value>) -> impl Res
             }))
         }
     })
-    .map_err(|_| HttpResponse::InternalServerError().finish())
+    .map_err(|err| err.to_response())
 }
 
 pub async fn my_lists(conn: web::Data<Pool>, req: web::HttpRequest) -> impl Responder {
-    let user = req.extensions_mut().remove::<User>().unwrap();
+    let user = match req.extensions_mut().remove::<User>() {
+        Some(user) => user,
+        None => {
+            return Err(
+                Error::throw("Unauthorized", Some("User not found in request")).to_response(),
+            )
+        }
+    };
     User::user_lists(&conn.get().unwrap(), user)
         .map(|user_list| {
             if user_list.len() > 0 {
@@ -57,10 +65,11 @@ pub async fn my_lists(conn: web::Data<Pool>, req: web::HttpRequest) -> impl Resp
                     "lists":user_list
                 }))
             } else {
-                HttpResponse::Ok().json(json!({
+                Error::from(json!({
                     "message":"you have no lists"
                 }))
+                .to_response()
             }
         })
-        .map_err(|_| HttpResponse::InternalServerError().finish())
+        .map_err(|err| err.to_response())
 }
