@@ -49,14 +49,18 @@ pub async fn login(conn: web::Data<Pool>, newuser: web::Json<Value>) -> impl Res
 }
 
 pub async fn my_lists(conn: web::Data<Pool>, req: web::HttpRequest) -> impl Responder {
-    let user = match req.extensions_mut().remove::<User>() {
+    /*let user = match req.extensions_mut().remove::<User>() {
         Some(user) => user,
         None => {
             return Err(
                 Error::throw("Unauthorized", Some("User not found in request")).to_response(),
             )
         }
-    };
+    };*/
+    // should be the same as code commented above
+    let user = req.extensions_mut().remove::<User>().ok_or_else(|| {
+        return Error::throw("Unauthorized", Some("User not found in request")).to_response();
+    })?;
     User::user_lists(&conn.get().unwrap(), user)
         .map(|user_list| {
             if user_list.len() > 0 {

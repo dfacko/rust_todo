@@ -50,10 +50,8 @@ impl TodoList {
     pub fn get_list_by_id(conn: &PgConnection, list_id: i32) -> Result<TodoList, Error> {
         use crate::schema::todo_list::dsl::*;
 
-        todo_list
-            .find(list_id)
-            .get_result::<TodoList>(conn)
-            .map_err(|err| Error::from(err))
+        let list = todo_list.find(list_id).get_result::<TodoList>(conn)?;
+        Ok(list)
     }
 
     pub async fn get_all_lists(conn: &PgConnection) -> Result<Vec<TodoList>, Error> {

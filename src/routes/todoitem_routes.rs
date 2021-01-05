@@ -14,18 +14,27 @@ pub async fn additem(
         Err(err) => return Err(err.to_response()),
         Ok(_) => to_string(&newitem.into_inner()).map_err(|e| Error::from(e).to_response())?,
     };
-    let insertable_item: TodoItemNew = match serde_json::from_str(&data) {
+    /*let insertable_item: TodoItemNew = match serde_json::from_str(&data) {
         Ok(data) => data,
         Err(err) => return Err(Error::from(err).to_response()),
-    };
-    let user = match req.extensions_mut().remove::<User>() {
+    };*/
+
+    let insertable_item: TodoItemNew =
+        serde_json::from_str(&data).map_err(|err| return Error::from(err).to_response())?;
+
+    /*let user = match req.extensions_mut().remove::<User>() {
         Some(user) => user,
         None => {
             return Err(
                 Error::throw("Unauthorized", Some("User not found in request")).to_response(),
             )
         }
-    };
+    };*/
+
+    let user = req.extensions_mut().remove::<User>().ok_or_else(|| {
+        Error::throw("Unauthorized", Some("User not found in request")).to_response()
+    })?;
+
     match User::user_lists(&conn.get().unwrap(), user) {
         Ok(lists) => {
             for list in lists {
@@ -47,14 +56,9 @@ pub async fn items_from_list(
     list_id: web::Path<i32>,
     req: web::HttpRequest,
 ) -> impl Responder {
-    let user = match req.extensions_mut().remove::<User>() {
-        Some(user) => user,
-        None => {
-            return Err(
-                Error::throw("Unauthorized", Some("User not found in request")).to_response(),
-            )
-        }
-    };
+    let user = req.extensions_mut().remove::<User>().ok_or_else(|| {
+        Error::throw("Unauthorized", Some("User not found in request")).to_response()
+    })?;
     match User::user_lists(&conn.get().unwrap(), user.clone()) {
         Ok(lists) => {
             for list in lists {
@@ -78,13 +82,23 @@ pub async fn delete_item(
     item_id: web::Path<i32>,
     req: web::HttpRequest,
 ) -> impl Responder {
-    TodoItem::delete_item(&conn.get().unwrap(), item_id.into_inner())
-        .map(|item| {
-            HttpResponse::Ok().json(json!({
-                "message": format!("{} item has been deleted", item)
-            }))
-        })
-        .map_err(|err| err.to_response())
+    let user = req.extensions_mut().remove::<User>().ok_or_else(|| {
+        Error::throw("Unauthorized", Some("User not found in request")).to_response()
+    })?;
+
+    if user.id == item_id.clone() {
+        TodoItem::delete_item(&conn.get().unwrap(), item_id.into_inner())
+            .map(|item| {
+                HttpResponse::Ok().json(json!({
+                    "message": format!("{} item has been deleted", item)
+                }))
+            })
+            .map_err(|err| err.to_response())
+    } else {
+        Err(HttpResponse::NotFound().json(json!({
+            "message":"item not found"
+        })))
+    }
 }
 
 pub async fn check_item(
@@ -92,9 +106,19 @@ pub async fn check_item(
     item_id: web::Path<i32>,
     req: web::HttpRequest,
 ) -> impl Responder {
-    TodoItem::check(&conn.get().unwrap(), item_id.into_inner())
-        .map(|item| HttpResponse::Ok().json(json!({ "updated item": item })))
-        .map_err(|_| HttpResponse::InternalServerError().finish())
+    let user = req.extensions_mut().remove::<User>().ok_or_else(|| {
+        Error::throw("Unauthorized", Some("User not found in request")).to_response()
+    })?;
+
+    if user.id == item_id.clone() {
+        TodoItem::check(&conn.get().unwrap(), item_id.into_inner())
+            .map(|item| HttpResponse::Ok().json(json!({ "updated item": item })))
+            .map_err(|_| HttpResponse::InternalServerError().finish())
+    } else {
+        Err(HttpResponse::NotFound().json(json!({
+            "message":"item not found"
+        })))
+    }
 }
 
 pub async fn uncheck_item(
@@ -102,9 +126,18 @@ pub async fn uncheck_item(
     item_id: web::Path<i32>,
     req: web::HttpRequest,
 ) -> impl Responder {
-    TodoItem::uncheck(&conn.get().unwrap(), item_id.into_inner())
-        .map(|item| HttpResponse::Ok().json(json!({ "updated item": item })))
-        .map_err(|_| HttpResponse::InternalServerError().finish())
+    let user = req.extensions_mut().remove::<User>().ok_or_else(|| {
+        Error::throw("Unauthorized", Some("User not found in request")).to_response()
+    })?;
+    if user.id == item_id.clone() {
+        TodoItem::uncheck(&conn.get().unwrap(), item_id.into_inner())
+            .map(|item| HttpResponse::Ok().json(json!({ "updated item": item })))
+            .map_err(|_| HttpResponse::InternalServerError().finish())
+    } else {
+        Err(HttpResponse::NotFound().json(json!({
+            "message":"item not found"
+        })))
+    }
 }
 
 pub async fn return_ok(conn: web::Data<Pool>, newitem: web::Json<Value>) -> impl Responder {
