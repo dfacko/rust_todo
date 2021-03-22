@@ -210,3 +210,26 @@ fn check_pass(user_pass: &str, input_pass: &str) -> bool {
         }
     }
 }
+
+pub trait Mytrait {
+    fn self_default() -> Self;
+}
+
+impl Mytrait for UserNew {
+    fn self_default() -> UserNew {
+        UserNew {
+            username: "String".to_string(),
+            pword: "String".to_string(),
+        }
+    }
+}
+
+impl Mytrait for TodoItemNew {
+    fn self_default() -> TodoItemNew {
+        TodoItemNew {
+            list_id: 0,
+            task: "String".to_string(),
+            finished: false,
+        }
+    }
+}

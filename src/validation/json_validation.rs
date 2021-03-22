@@ -1,12 +1,16 @@
 use crate::error::*;
+use crate::models::models::Mytrait;
+use crate::models::models::UserNew;
 use actix_web::web;
 use serde::Deserialize;
 use serde_json::{json, to_string, Value};
-use std::result::Result;
+use std::{fmt::Debug, result::Result};
 pub fn validate<T>(item: web::Json<Value>, keys: Vec<&str>) -> Result<T, Error>
 where
-    T: Clone + for<'de> Deserialize<'de>,
+    T: Clone + for<'de> Deserialize<'de> + Mytrait + Debug,
 {
+    let item2 = T::self_default();
+    println!("{:#?}", item2);
     let mut messages: Vec<Value> = vec![];
     for key in keys {
         let rule = String::from(key);
@@ -19,9 +23,13 @@ where
                 }));
             } else {
                 match checktype(&item[value_key], rule) {
-                    Err(_) => {
+                    Err(e) => {
                         messages.push(json!({
-                            "message": format!("{} is not of required type ({})", value_key, rule)
+                            "message":
+                                format!(
+                                    "{} is not of required type {}, it is {}",
+                                    value_key, rule, e
+                                )
                         }));
                     }
                     _ => {}
@@ -42,7 +50,7 @@ where
     }
 }
 
-fn checktype(item: &Value, rule: &str) -> Result<(), ()> {
+fn checktype(item: &Value, rule: &str) -> Result<(), String> {
     let value_type = match item {
         Value::Number(_) => "int",
         Value::String(_) => "string",
@@ -53,7 +61,29 @@ fn checktype(item: &Value, rule: &str) -> Result<(), ()> {
     };
 
     if rule != value_type {
-        return Err(());
+        return Err(value_type.to_string());
     };
     Ok(())
+}
+
+trait TypeInfo {
+    fn type_of(&self) -> &'static str;
+}
+
+impl TypeInfo for i32 {
+    fn type_of(&self) -> &'static str {
+        "i32"
+    }
+}
+
+impl TypeInfo for i64 {
+    fn type_of(&self) -> &'static str {
+        "i64"
+    }
+}
+
+impl TypeInfo for String {
+    fn type_of(&self) -> &'static str {
+        "String"
+    }
 }

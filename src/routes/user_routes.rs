@@ -5,7 +5,7 @@ use crate::json_validation;
 use crate::jwt::*;
 use crate::models::models::*;
 use actix_web::{web, HttpResponse, Responder};
-use serde_json::{json, to_string, Value};
+use serde_json::{json, Value};
 
 pub async fn create_user(conn: web::Data<Pool>, newuser: web::Json<Value>) -> impl Responder {
     let data: UserNew = match json_validation::validate::<UserNew>(
