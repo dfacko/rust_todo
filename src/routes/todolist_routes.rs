@@ -26,11 +26,6 @@ pub async fn addlist(
     newlist: web::Json<TodoListJson>,
     req: web::HttpRequest,
 ) -> impl Responder {
-    /*let title: String = match &newlist.title {
-        Some(title) => title.to_string(),
-        None => return Ok(HttpResponse::BadRequest().finish()),
-    };*/
-
     let title: String = newlist
         .into_inner()
         .title

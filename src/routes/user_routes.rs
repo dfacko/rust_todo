@@ -8,10 +8,11 @@ use actix_web::{web, HttpResponse, Responder};
 use serde_json::{json, to_string, Value};
 
 pub async fn create_user(conn: web::Data<Pool>, newuser: web::Json<Value>) -> impl Responder {
-    let data: String = match json_validation::validate(&newuser, vec![]) {
-        Err(err) => return Err(err.to_response()),
-        Ok(_) => to_string(&newuser.into_inner()).map_err(|e| Error::from(e).to_response())?,
-    };
+    let data: String =
+        match json_validation::validate(&newuser, vec!["username|string", "password|string"]) {
+            Err(err) => return Err(err.to_response()),
+            Ok(_) => to_string(&newuser.into_inner()).map_err(|e| Error::from(e).to_response())?,
+        };
     let insertable_user: UserNew =
         serde_json::from_str(&data).map_err(|e| Error::from(e).to_response())?;
     User::create_user(&conn.get().unwrap(), insertable_user)
@@ -49,14 +50,6 @@ pub async fn login(conn: web::Data<Pool>, newuser: web::Json<Value>) -> impl Res
 }
 
 pub async fn my_lists(conn: web::Data<Pool>, req: web::HttpRequest) -> impl Responder {
-    /*let user = match req.extensions_mut().remove::<User>() {
-        Some(user) => user,
-        None => {
-            return Err(
-                Error::throw("Unauthorized", Some("User not found in request")).to_response(),
-            )
-        }
-    };*/
     // should be the same as code commented above
     let user = req.extensions_mut().remove::<User>().ok_or_else(|| {
         return Error::throw("Unauthorized", Some("User not found in request")).to_response();
