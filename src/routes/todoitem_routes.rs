@@ -10,26 +10,13 @@ pub async fn additem(
     newitem: web::Json<Value>,
     req: web::HttpRequest,
 ) -> impl Responder {
-    let data: String = match json_validation::validate(&newitem, vec![]) {
+    let data: TodoItemNew = match json_validation::validate::<TodoItemNew>(
+        newitem,
+        vec!["username|string", "password|string"],
+    ) {
         Err(err) => return Err(err.to_response()),
-        Ok(_) => to_string(&newitem.into_inner()).map_err(|e| Error::from(e).to_response())?,
-    };
-    /*let insertable_item: TodoItemNew = match serde_json::from_str(&data) {
         Ok(data) => data,
-        Err(err) => return Err(Error::from(err).to_response()),
-    };*/
-
-    let insertable_item: TodoItemNew =
-        serde_json::from_str(&data).map_err(|err| return Error::from(err).to_response())?;
-
-    /*let user = match req.extensions_mut().remove::<User>() {
-        Some(user) => user,
-        None => {
-            return Err(
-                Error::throw("Unauthorized", Some("User not found in request")).to_response(),
-            )
-        }
-    };*/
+    };
 
     let user = req.extensions_mut().remove::<User>().ok_or_else(|| {
         Error::throw("Unauthorized", Some("User not found in request")).to_response()
@@ -38,8 +25,8 @@ pub async fn additem(
     match User::user_lists(&conn.get().unwrap(), user) {
         Ok(lists) => {
             for list in lists {
-                if list.id == insertable_item.list_id {
-                    return TodoItem::create_item(&conn.get().unwrap(), insertable_item)
+                if list.id == data.list_id {
+                    return TodoItem::create_item(&conn.get().unwrap(), data)
                         .map(|item| HttpResponse::Ok().json(item))
                         .map_err(|err| err.to_response());
                 }
@@ -141,12 +128,13 @@ pub async fn uncheck_item(
 }
 
 pub async fn return_ok(conn: web::Data<Pool>, newitem: web::Json<Value>) -> impl Responder {
-    let data: String = match json_validation::validate(&newitem, vec![]) {
+    let _data: TodoItemNew = match json_validation::validate::<TodoItemNew>(
+        newitem,
+        vec!["username|string", "password|string"],
+    ) {
         Err(err) => return Err(err.to_response()),
-        Ok(_) => to_string(&newitem.into_inner()).map_err(|e| Error::from(e).to_response())?,
+        Ok(data) => data,
     };
-    let insertable_item: TodoItemNew = serde_json::from_str(&data).unwrap();
-    println!("Created todo item {:?}", insertable_item);
     TodoItem::return_ok(&conn.get().unwrap())
         .map(|item| HttpResponse::Ok().json(json!({ "updated item": item })))
         .map_err(|_| HttpResponse::InternalServerError().finish())

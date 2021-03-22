@@ -1,8 +1,12 @@
 use crate::error::*;
 use actix_web::web;
-use serde_json::{json, Value};
+use serde::Deserialize;
+use serde_json::{json, to_string, Value};
 use std::result::Result;
-pub fn validate(item: &web::Json<Value>, keys: Vec<&str>) -> Result<(), Error> {
+pub fn validate<T>(item: web::Json<Value>, keys: Vec<&str>) -> Result<T, Error>
+where
+    T: Clone + for<'de> Deserialize<'de>,
+{
     let mut messages: Vec<Value> = vec![];
     for key in keys {
         let rule = String::from(key);
@@ -26,7 +30,13 @@ pub fn validate(item: &web::Json<Value>, keys: Vec<&str>) -> Result<(), Error> {
         }
     }
     if messages.len() == 0 {
-        return Ok(());
+        let stuff = to_string(&item.into_inner())
+            .map_err(|e| Error::from(e).to_response())
+            .unwrap();
+        let data: T = serde_json::from_str(&stuff)
+            .map_err(|err| Error::from(err).to_response())
+            .unwrap();
+        return Ok(data);
     } else {
         return Err(Error::from(json!({ "messages": messages })));
     }

@@ -8,29 +8,30 @@ use actix_web::{web, HttpResponse, Responder};
 use serde_json::{json, to_string, Value};
 
 pub async fn create_user(conn: web::Data<Pool>, newuser: web::Json<Value>) -> impl Responder {
-    let data: String =
-        match json_validation::validate(&newuser, vec!["username|string", "password|string"]) {
-            Err(err) => return Err(err.to_response()),
-            Ok(_) => to_string(&newuser.into_inner()).map_err(|e| Error::from(e).to_response())?,
-        };
-    let insertable_user: UserNew =
-        serde_json::from_str(&data).map_err(|e| Error::from(e).to_response())?;
-    User::create_user(&conn.get().unwrap(), insertable_user)
+    let data: UserNew = match json_validation::validate::<UserNew>(
+        newuser,
+        vec!["username|string", "pword|string"],
+    ) {
+        Err(err) => return Err(err.to_response()),
+        Ok(data) => data,
+    };
+    User::create_user(&conn.get().unwrap(), data)
         .map(|user| HttpResponse::Ok().json(user))
         .map_err(|err| err.to_response())
 }
 
 pub async fn login(conn: web::Data<Pool>, newuser: web::Json<Value>) -> impl Responder {
-    let data: String = match json_validation::validate(&newuser, vec![]) {
+    let data: UserNew = match json_validation::validate::<UserNew>(
+        newuser,
+        vec!["username|string", "pword|string"],
+    ) {
         Err(err) => return Err(err.to_response()),
-        Ok(_) => to_string(&newuser.into_inner()).map_err(|e| Error::from(e).to_response())?,
+        Ok(data) => data,
     };
-    let insertable_user: UserNew =
-        serde_json::from_str(&data).map_err(|err| Error::from(err).to_response())?;
     User::login(
         &conn.get().unwrap(),
-        insertable_user.username.to_string(),
-        insertable_user.pword.to_string(),
+        data.username.to_string(),
+        data.pword.to_string(),
     )
     .map(|mut user| {
         if user.len() > 0 {

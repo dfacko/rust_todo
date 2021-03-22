@@ -24,11 +24,11 @@ pub struct TodoItem {
     pub finished: bool,
 }
 
-#[derive(Debug, Insertable, Serialize, Deserialize)]
+#[derive(Clone, Debug, Insertable, Serialize, Deserialize)]
 #[table_name = "todo_item"]
-pub struct TodoItemNew<'a> {
+pub struct TodoItemNew {
     pub list_id: i32,
-    pub task: &'a str,
+    pub task: String,
     pub finished: bool,
 }
 
@@ -39,7 +39,7 @@ pub struct User {
     pub pword: String,
 }
 
-#[derive(Debug, Insertable, Serialize, Deserialize)]
+#[derive(Clone, Debug, Insertable, Serialize, Deserialize)]
 #[table_name = "user_"]
 pub struct UserNew {
     pub username: String,
