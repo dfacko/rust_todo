@@ -1,6 +1,6 @@
 -- Your SQL goes here
 create table user_ (
-    id serial primary key,
-    username varchar(150)  unique not null,
+    id uuid primary key not null default gen_random_uuid(),
+    username varchar(150) unique not null ,
     pword varchar(150) not null
 )

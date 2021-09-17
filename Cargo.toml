@@ -10,9 +10,10 @@ version = "0.1.0"
 actix-rt = "1.1.1"
 actix-service = "1.0.6"
 actix-web = "3"
+uuid = { version = "0.8.2", features = ["serde", "v4"] }
 bcrypt = "0.9.0"
 chrono = "0.4.19"
-diesel = {version = "1.4.5", features = ["postgres", "r2d2"]}
+diesel = {version = "1.4.5", features = ["postgres", "r2d2","uuidv07"]}
 dotenv = "0.15.0"
 future-utils = "0.12.1"
 futures = "0.3.8"

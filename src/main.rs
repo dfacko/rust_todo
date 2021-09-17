@@ -33,16 +33,6 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .data(pool.clone())
-            .wrap_fn(|req, srv| {
-                println!("prvi");
-                srv.call(req).map(|res| res)
-            })
-            .wrap_fn(|req, srv| {
-                println!("drugi");
-                srv.call(req).map(|res| res)
-            })
-            //.wrap(simplemiddleware::SayHi)
-            .wrap(authorize::CheckLogin)
             .route("/lists", web::get().to(todolist_routes::lists))
             .route("/addlist", web::post().to(todolist_routes::addlist))
             .route(
@@ -53,6 +43,7 @@ async fn main() -> std::io::Result<()> {
                 "/listbyid/{list_id}",
                 web::get().to(todolist_routes::list_by_id),
             )
+            .wrap(authorize::CheckLogin)
             .route("/additem", web::post().to(routes::todoitem_routes::additem))
             .route(
                 "/listitems/{list_id}",

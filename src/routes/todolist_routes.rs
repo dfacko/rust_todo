@@ -4,6 +4,7 @@ use crate::models::models::*;
 use actix_web::http::StatusCode;
 use actix_web::{web, HttpResponse, Responder};
 use serde_json::json;
+use uuid::Uuid;
 
 pub async fn lists(conn: web::Data<Pool>) -> impl Responder {
     let lists = TodoList::get_all_lists(&conn.get().unwrap()).await;
@@ -37,7 +38,7 @@ pub async fn addlist(
     })?;
 
     let newlist = TodoListNew {
-        title: &title,
+        title: title,
         user_id: user.id,
     };
 
@@ -46,7 +47,7 @@ pub async fn addlist(
         .map_err(|_| HttpResponse::InternalServerError().finish())
 }
 
-pub async fn list_by_id(conn: web::Data<Pool>, path: web::Path<i32>) -> impl Responder {
+pub async fn list_by_id(conn: web::Data<Pool>, path: web::Path<String>) -> impl Responder {
     TodoList::get_list_by_id(&conn.get().unwrap(), path.into_inner())
         .map(|list| HttpResponse::Ok().json(list))
         .map_err(|_| HttpResponse::InternalServerError().finish())
@@ -54,26 +55,30 @@ pub async fn list_by_id(conn: web::Data<Pool>, path: web::Path<i32>) -> impl Res
 
 pub async fn delete_list(
     conn: web::Data<Pool>,
-    path: web::Path<i32>,
+    path: web::Path<String>,
     req: web::HttpRequest,
 ) -> impl Responder {
     let user = req.extensions_mut().remove::<User>().ok_or_else(|| {
         Error::throw("Unauthorized", Some("User not found in request")).to_response()
     })?;
-    match TodoList::get_list_by_id(&conn.get().unwrap(), path.clone()) {
+    let list_id = match TodoList::get_list_by_id(&conn.get().unwrap(), path.clone()) {
         Ok(list) => {
-            if list.id != user.id {
+            if list.user_id != user.id {
                 return Ok(HttpResponse::Ok().json(json!({
                     "message":"cannot delete"
                 })));
+            } else {
+                list.id
             }
         }
         Err(_) => {
             println!("no list found");
-            return Ok(HttpResponse::InternalServerError().finish());
+            return Ok(HttpResponse::Unauthorized().json(json!({
+                "message":"cannot delete"
+            })));
         }
     };
-    TodoList::delete_list(&conn.get().unwrap(), path.into_inner())
+    TodoList::delete_list(&conn.get().unwrap(), list_id)
         .map(|item| {
             HttpResponse::Ok().json(json!({
                 "message": format!("{} item has been removed", item)

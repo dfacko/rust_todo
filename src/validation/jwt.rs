@@ -1,5 +1,6 @@
 use crate::models::models::*;
 use chrono::prelude::*;
+use uuid::Uuid;
 use jsonwebtoken;
 use serde::{Deserialize, Serialize};
 
@@ -7,7 +8,7 @@ use serde::{Deserialize, Serialize};
 struct Claims {
     sub: String,
     pass: String,
-    id: i32,
+    id: String,
     exp: i64,
 }
 
@@ -19,7 +20,7 @@ pub fn generate(user: User) -> String {
     let claims = Claims {
         sub: String::from(user.username),
         pass: String::from(user.pword),
-        id: user.id,
+        id: user.id.to_string(),
         exp: exp.timestamp(),
     };
 
@@ -41,7 +42,7 @@ pub fn verify(token: String) -> Result<User, jsonwebtoken::errors::Error> {
     )?;
 
     Ok(User {
-        id: data.claims.id,
+        id: Uuid::parse_str(&data.claims.id).unwrap(),
         username: String::from(data.claims.sub),
         pword: String::from(data.claims.pass),
     })

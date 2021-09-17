@@ -1,25 +1,29 @@
+use uuid::Uuid;
+
 use crate::bcrypt::*;
 use crate::diesel::prelude::*;
 use crate::error::*;
 use crate::schema::*;
-#[derive(Debug, Queryable, Serialize, Clone)]
+#[derive(Debug, Queryable, QueryableByName, Serialize, Clone)]
+#[table_name = "todo_list"]
 pub struct TodoList {
-    pub id: i32,
-    pub user_id: i32,
+    pub id: Uuid,
+    pub user_id: Uuid,
     pub title: String,
 }
 
 #[derive(Debug, Insertable, Serialize, Deserialize)]
 #[table_name = "todo_list"]
-pub struct TodoListNew<'a> {
-    pub title: &'a str,
-    pub user_id: i32,
+pub struct TodoListNew {
+    pub title: String,
+    pub user_id: Uuid,
 }
 
-#[derive(Debug, Queryable, Serialize, Clone)]
+#[derive(Debug, Queryable, QueryableByName, Serialize, Clone)]
+#[table_name = "todo_item"]
 pub struct TodoItem {
-    pub id: i32,
-    pub list_id: i32,
+    pub id: Uuid,
+    pub list_id: Uuid,
     pub task: String,
     pub finished: bool,
 }
@@ -27,14 +31,15 @@ pub struct TodoItem {
 #[derive(Clone, Debug, Insertable, Serialize, Deserialize)]
 #[table_name = "todo_item"]
 pub struct TodoItemNew {
-    pub list_id: i32,
+    pub list_id: Uuid,
     pub task: String,
     pub finished: bool,
 }
 
-#[derive(Debug, Queryable, Serialize, Clone)]
+#[derive(Debug, Queryable, QueryableByName, Serialize, Clone)]
+#[table_name = "user_"]
 pub struct User {
-    pub id: i32,
+    pub id: Uuid,
     pub username: String,
     pub pword: String,
 }
@@ -47,10 +52,10 @@ pub struct UserNew {
 }
 
 impl TodoList {
-    pub fn get_list_by_id(conn: &PgConnection, list_id: i32) -> Result<TodoList, Error> {
+    pub fn get_list_by_id(conn: &PgConnection, list_id: String) -> Result<TodoList, Error> {
         use crate::schema::todo_list::dsl::*;
 
-        let list = todo_list.find(list_id).get_result::<TodoList>(conn)?;
+        let list = todo_list.find(Uuid::parse_str(&list_id).unwrap()).get_result::<TodoList>(conn)?;
         Ok(list)
     }
 
@@ -61,7 +66,7 @@ impl TodoList {
             .map_err(|err| Error::from(err))
     }
 
-    pub fn create_list<'a>(conn: &PgConnection, list: TodoListNew<'a>) -> Result<TodoList, Error> {
+    pub fn create_list(conn: &PgConnection, list: TodoListNew) -> Result<TodoList, Error> {
         diesel::insert_into(todo_list::table)
             .values(&list)
             .get_result::<TodoList>(conn)
@@ -71,7 +76,7 @@ impl TodoList {
     pub fn delete_list(
         // returns 0 if no rows are deleted
         conn: &PgConnection,
-        delete_id: i32,
+        delete_id: Uuid,
     ) -> Result<usize, Error> {
         use crate::schema::todo_list::dsl::*;
         match diesel::delete(todo_list.filter(id.eq(delete_id))).execute(conn) {
@@ -95,7 +100,7 @@ impl TodoItem {
             .get_result(conn)
             .map_err(|err| Error::from(err))
     }
-    pub fn items_from_list(conn: &PgConnection, some_list_id: i32) -> Result<Vec<TodoItem>, Error> {
+    pub fn items_from_list(conn: &PgConnection, some_list_id: Uuid) -> Result<Vec<TodoItem>, Error> {
         use crate::schema::todo_item::dsl::*;
         match todo_item
             .filter(list_id.eq(some_list_id))
@@ -109,7 +114,7 @@ impl TodoItem {
     pub fn delete_item(
         // returns 0 if no rows are deleted
         conn: &PgConnection,
-        delete_id: i32,
+        delete_id: Uuid,
     ) -> Result<usize, Error> {
         use crate::schema::todo_item::dsl::*;
         match diesel::delete(todo_item.filter(id.eq(delete_id))).execute(conn) {
@@ -124,7 +129,7 @@ impl TodoItem {
         }
     }
 
-    pub fn _get_item_by_id(conn: &PgConnection, item_id: i32) -> Result<Vec<TodoItem>, Error> {
+    pub fn _get_item_by_id(conn: &PgConnection, item_id: Uuid) -> Result<Vec<TodoItem>, Error> {
         use crate::schema::todo_item::dsl::*;
 
         match todo_item.find(item_id).load::<TodoItem>(conn) {
@@ -133,7 +138,7 @@ impl TodoItem {
         }
     }
 
-    pub fn check(conn: &PgConnection, item_id: i32) -> Result<TodoItem, Error> {
+    pub fn check(conn: &PgConnection, item_id: Uuid) -> Result<TodoItem, Error> {
         use crate::schema::todo_item::dsl::*;
 
         diesel::update(todo_item.filter(id.eq(item_id)))
@@ -142,7 +147,7 @@ impl TodoItem {
             .map_err(|err| Error::from(err))
     }
 
-    pub fn uncheck(conn: &PgConnection, item_id: i32) -> Result<TodoItem, Error> {
+    pub fn uncheck(conn: &PgConnection, item_id: Uuid) -> Result<TodoItem, Error> {
         use crate::schema::todo_item::dsl::*;
 
         diesel::update(todo_item.filter(id.eq(item_id)))
@@ -210,7 +215,7 @@ fn check_pass(user_pass: &str, input_pass: &str) -> bool {
         }
     }
 }
-
+/*
 pub trait Mytrait {
     fn self_default() -> Self;
 }
@@ -232,4 +237,4 @@ impl Mytrait for TodoItemNew {
             finished: false,
         }
     }
-}
+}*/

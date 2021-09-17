@@ -17,7 +17,7 @@ pub async fn create_user(conn: web::Data<Pool>, newuser: web::Json<Value>) -> im
     };
     User::create_user(&conn.get().unwrap(), data)
         .map(|user| HttpResponse::Ok().json(user))
-        .map_err(|err| err.to_response())
+        .map_err(|_err| HttpResponse::BadRequest().body("account already exists"))
 }
 
 pub async fn login(conn: web::Data<Pool>, newuser: web::Json<Value>) -> impl Responder {

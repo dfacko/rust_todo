@@ -1,7 +1,7 @@
 table! {
     todo_item (id) {
-        id -> Int4,
-        list_id -> Int4,
+        id -> Uuid,
+        list_id -> Uuid,
         task -> Varchar,
         finished -> Bool,
     }
@@ -9,15 +9,15 @@ table! {
 
 table! {
     todo_list (id) {
-        id -> Int4,
-        user_id -> Int4,
+        id -> Uuid,
+        user_id -> Uuid,
         title -> Varchar,
     }
 }
 
 table! {
     user_ (id) {
-        id -> Int4,
+        id -> Uuid,
         username -> Varchar,
         pword -> Varchar,
     }

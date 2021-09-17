@@ -1,5 +1,4 @@
 use crate::error::*;
-use crate::models::models::Mytrait;
 use crate::models::models::UserNew;
 use actix_web::web;
 use serde::Deserialize;
@@ -7,10 +6,8 @@ use serde_json::{json, to_string, Value};
 use std::{fmt::Debug, result::Result};
 pub fn validate<T>(item: web::Json<Value>, keys: Vec<&str>) -> Result<T, Error>
 where
-    T: Clone + for<'de> Deserialize<'de> + Mytrait + Debug,
+    T: Clone + for<'de> Deserialize<'de> + Debug,
 {
-    let item2 = T::self_default();
-    println!("{:#?}", item2);
     let mut messages: Vec<Value> = vec![];
     for key in keys {
         let rule = String::from(key);
