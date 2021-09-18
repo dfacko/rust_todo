@@ -52,10 +52,10 @@ pub struct UserNew {
 }
 
 impl TodoList {
-    pub fn get_list_by_id(conn: &PgConnection, list_id: String) -> Result<TodoList, Error> {
-        use crate::schema::todo_list::dsl::*;
-
-        let list = todo_list.find(Uuid::parse_str(&list_id).unwrap()).get_result::<TodoList>(conn)?;
+    pub fn get_list_by_id(conn: &PgConnection, list_id: Uuid) -> Result<TodoList, Error> {
+        let list = todo_list::table
+            .filter(todo_list::id.eq(list_id))
+            .get_result::<TodoList>(conn)?;
         Ok(list)
     }
 
@@ -90,6 +90,13 @@ impl TodoList {
             }
         }
     }
+
+    pub fn user_lists(conn: &PgConnection, user_id: Uuid) -> Result<Vec<TodoList>, Error> {
+        todo_list::table
+            .filter(todo_list::user_id.eq(user_id))
+            .get_results(conn)
+            .map_err(Error::from)
+    }
 }
 
 impl TodoItem {
@@ -100,7 +107,10 @@ impl TodoItem {
             .get_result(conn)
             .map_err(|err| Error::from(err))
     }
-    pub fn items_from_list(conn: &PgConnection, some_list_id: Uuid) -> Result<Vec<TodoItem>, Error> {
+    pub fn items_from_list(
+        conn: &PgConnection,
+        some_list_id: Uuid,
+    ) -> Result<Vec<TodoItem>, Error> {
         use crate::schema::todo_item::dsl::*;
         match todo_item
             .filter(list_id.eq(some_list_id))
@@ -115,6 +125,7 @@ impl TodoItem {
         // returns 0 if no rows are deleted
         conn: &PgConnection,
         delete_id: Uuid,
+        list_ids: Vec<Uuid>,
     ) -> Result<usize, Error> {
         use crate::schema::todo_item::dsl::*;
         match diesel::delete(todo_item.filter(id.eq(delete_id))).execute(conn) {
@@ -129,10 +140,13 @@ impl TodoItem {
         }
     }
 
-    pub fn _get_item_by_id(conn: &PgConnection, item_id: Uuid) -> Result<Vec<TodoItem>, Error> {
+    pub fn _get_item_by_id(conn: &PgConnection, item_id: Uuid) -> Result<TodoItem, Error> {
         use crate::schema::todo_item::dsl::*;
 
-        match todo_item.find(item_id).load::<TodoItem>(conn) {
+        match todo_item
+            .filter(id.eq(item_id))
+            .get_result::<TodoItem>(conn)
+        {
             Ok(item) => Ok(item),
             Err(error) => Err(Error::from(error)),
         }

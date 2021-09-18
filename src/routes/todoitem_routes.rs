@@ -41,7 +41,7 @@ pub async fn additem(
 
 pub async fn items_from_list(
     conn: web::Data<Pool>,
-    list_id: web::Path<String>,
+    list_id: web::Path<Uuid>,
     req: web::HttpRequest,
 ) -> impl Responder {
     let user = req.extensions_mut().remove::<User>().ok_or_else(|| {
@@ -49,10 +49,9 @@ pub async fn items_from_list(
     })?;
     match User::user_lists(&conn.get().unwrap(), user.clone()) {
         Ok(lists) => {
-            let list_id = Uuid::parse_str(&list_id).unwrap();
             for list in lists {
-                if list.id == list_id && list.user_id == user.id {
-                    return TodoItem::items_from_list(&conn.get().unwrap(), list_id)
+                if list.id == *list_id && list.user_id == user.id {
+                    return TodoItem::items_from_list(&conn.get().unwrap(), *list_id)
                         .map(|items| HttpResponse::Ok().json(items))
                         .map_err(|err| err.to_response());
                 }
@@ -68,66 +67,101 @@ pub async fn items_from_list(
 
 pub async fn delete_item(
     conn: web::Data<Pool>,
-    item_id: web::Path<String>,
+    item_id: web::Path<Uuid>,
     req: web::HttpRequest,
 ) -> impl Responder {
     let user = req.extensions_mut().remove::<User>().ok_or_else(|| {
         Error::throw("Unauthorized", Some("User not found in request")).to_response()
     })?;
-    let item_id = Uuid::parse_str(&item_id).unwrap();
-    if user.id == item_id {
-        TodoItem::delete_item(&conn.get().unwrap(), item_id)
-            .map(|item| {
-                HttpResponse::Ok().json(json!({
-                    "message": format!("{} item has been deleted", item)
-                }))
-            })
-            .map_err(|err| err.to_response())
-    } else {
-        Err(HttpResponse::NotFound().json(json!({
-            "message":"item not found"
-        })))
+
+    let item =
+        TodoItem::_get_item_by_id(&conn.get().unwrap(), *item_id).map_err(|e| e.to_response())?;
+
+    let user_lists_ids = TodoList::user_lists(&conn.get().unwrap(), user.id)
+        .map_err(|e| e.to_response())?
+        .into_iter()
+        .map(|item| item.id)
+        .collect::<Vec<Uuid>>();
+
+    if !user_lists_ids.contains(&item.list_id) {
+        return Err(HttpResponse::Unauthorized().json(json!({
+            "message":" not your item"
+        })));
     }
+
+    TodoItem::delete_item(&conn.get().unwrap(), *item_id, user_lists_ids)
+        .map(|item| {
+            HttpResponse::Ok().json(json!({
+                "message": format!("{} item has been deleted", item)
+            }))
+        })
+        .map_err(|err| err.to_response())
 }
 
 pub async fn check_item(
     conn: web::Data<Pool>,
-    item_id: web::Path<String>,
-    req: web::HttpRequest,
-) -> impl Responder {
-    let _user = req.extensions_mut().remove::<User>().ok_or_else(|| {
-        Error::throw("Unauthorized", Some("User not found in request")).to_response()
-    }).map_err(|_|HttpResponse::Unauthorized().body("User not found in request"))?;
-
-
-    let item_id:Uuid = Uuid::parse_str(&item_id).unwrap();
-        TodoItem::check(&conn.get().unwrap(), item_id)
-            .map(|item| HttpResponse::Ok().json(json!({ "updated item": item })))
-            .map_err(|_| HttpResponse::NotFound().json(json!({
-                "message":"item not found"
-            })))
-}
-
-pub async fn uncheck_item(
-    conn: web::Data<Pool>,
-    item_id: web::Path<String>,
+    item_id: web::Path<Uuid>,
     req: web::HttpRequest,
 ) -> impl Responder {
     let user = req.extensions_mut().remove::<User>().ok_or_else(|| {
         Error::throw("Unauthorized", Some("User not found in request")).to_response()
     })?;
 
+    let item =
+        TodoItem::_get_item_by_id(&conn.get().unwrap(), *item_id).map_err(|e| e.to_response())?;
 
-    let item_id = Uuid::parse_str(&item_id).unwrap();
-    if user.id == item_id {
-        TodoItem::uncheck(&conn.get().unwrap(), item_id)
-            .map(|item| HttpResponse::Ok().json(json!({ "updated item": item })))
-            .map_err(|_| HttpResponse::InternalServerError().finish())
-    } else {
-        Err(HttpResponse::NotFound().json(json!({
-            "message":"item not found"
-        })))
+    let user_lists_ids = TodoList::user_lists(&conn.get().unwrap(), user.id)
+        .map_err(|e| e.to_response())?
+        .into_iter()
+        .map(|item| item.id)
+        .collect::<Vec<Uuid>>();
+
+    if !user_lists_ids.contains(&item.list_id) {
+        return Err(HttpResponse::Unauthorized().json(json!({
+            "message":" not your item"
+        })));
     }
+
+    TodoItem::check(&conn.get().unwrap(), *item_id)
+        .map(|item| HttpResponse::Ok().json(json!({ "updated item": item })))
+        .map_err(|_| {
+            HttpResponse::NotFound().json(json!({
+                "message":"item not found"
+            }))
+        })
+}
+
+pub async fn uncheck_item(
+    conn: web::Data<Pool>,
+    item_id: web::Path<Uuid>,
+    req: web::HttpRequest,
+) -> impl Responder {
+    let user = req.extensions_mut().remove::<User>().ok_or_else(|| {
+        Error::throw("Unauthorized", Some("User not found in request")).to_response()
+    })?;
+
+    let item =
+        TodoItem::_get_item_by_id(&conn.get().unwrap(), *item_id).map_err(|e| e.to_response())?;
+
+    let user_lists_ids = TodoList::user_lists(&conn.get().unwrap(), user.id)
+        .map_err(|e| e.to_response())?
+        .into_iter()
+        .map(|item| item.id)
+        .collect::<Vec<Uuid>>();
+
+    if !user_lists_ids.contains(&item.list_id) {
+        return Err(HttpResponse::Unauthorized().json(json!({
+            "message":" not your item"
+        })));
+    }
+
+    TodoItem::uncheck(&conn.get().unwrap(), *item_id)
+        .map(|item| HttpResponse::Ok().json(json!({ "updated item": item })))
+        .map_err(|_| {
+            HttpResponse::NotFound().json(json!({
+                "message":"item not found"
+            }))
+        })
 }
 
 pub async fn return_ok(conn: web::Data<Pool>, newitem: web::Json<Value>) -> impl Responder {

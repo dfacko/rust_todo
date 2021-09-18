@@ -38,7 +38,7 @@ pub async fn addlist(
     })?;
 
     let newlist = TodoListNew {
-        title: title,
+        title,
         user_id: user.id,
     };
 
@@ -47,7 +47,24 @@ pub async fn addlist(
         .map_err(|_| HttpResponse::InternalServerError().finish())
 }
 
-pub async fn list_by_id(conn: web::Data<Pool>, path: web::Path<String>) -> impl Responder {
+pub async fn list_by_id(
+    conn: web::Data<Pool>,
+    path: web::Path<Uuid>,
+    req: web::HttpRequest,
+) -> impl Responder {
+    let user = req.extensions_mut().remove::<User>().ok_or_else(|| {
+        Error::throw("Unauthorized", Some("User not found in request")).to_response()
+    })?;
+
+    let user_lists =
+        TodoList::user_lists(&conn.get().unwrap(), user.id).map_err(|e| e.to_response())?;
+
+    if !user_lists.iter().any(|list| list.user_id == user.id) {
+        return Err(HttpResponse::Unauthorized().json(json!({
+            "message":" Not your list"
+        })));
+    }
+
     TodoList::get_list_by_id(&conn.get().unwrap(), path.into_inner())
         .map(|list| HttpResponse::Ok().json(list))
         .map_err(|_| HttpResponse::InternalServerError().finish())
@@ -55,7 +72,7 @@ pub async fn list_by_id(conn: web::Data<Pool>, path: web::Path<String>) -> impl 
 
 pub async fn delete_list(
     conn: web::Data<Pool>,
-    path: web::Path<String>,
+    path: web::Path<Uuid>,
     req: web::HttpRequest,
 ) -> impl Responder {
     let user = req.extensions_mut().remove::<User>().ok_or_else(|| {
